@@ -1,4 +1,5 @@
 # InfraGenie — AI Automation Platform
+<img width="1024" height="512" alt="image" src="https://github.com/user-attachments/assets/1f139a3a-7264-4a60-8f93-8856680c6f64" />
 
 Intelligent infrastructure provisioning powered by AI. InfraGenie bridges natural language conversations with Terraform-based cloud deployments, ServiceNow ITSM integration, and cost estimation via Infracost.
 
@@ -249,8 +250,35 @@ InfraGenie runs entirely via Docker Compose. For production:
 5. Pin Docker image versions in `docker-compose.yml`
 
 ## Screenshots
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/3bd4c2dc-a00b-49b5-8518-28face6a2685" width="400"><br>
+      <b>Dashboard View</b>
+    </td>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/da2c2b02-ed9c-4ec7-9a79-fdf93bfec360" width="400"><br>
+      <b>Automated Executive Reports</b>
+    </td>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/af3764d5-3601-4e51-8c82-1a2c5f0631f8" width="400"><br>
+      <b>AI-Driven Recommendations</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/55cc4c1f-013b-4061-b691-a70ad43f190e" width="400"><br>
+      <b>ServiceNow Ticket Management</b>
+    </td>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/e17e41c6-72cc-4ea6-b7da-7807a5249dfe" width="400"><br>
+      <b>Deployment Pipelines</b>
+    </td>
+  
+  </tr>
+</table>
 
-> Coming soon
+
 
 ---
 
