@@ -1,0 +1,72 @@
+{
+  "title": "InfraGenie Portal Health",
+  "uid": "infragenie-health",
+  "schemaVersion": 36,
+  "version": 1,
+  "timezone": "utc",
+  "panels": [
+    {
+      "title": "API Request Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(http_requests_total[5m])", "legendFormat": "{{method}} {{path}}"}],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "title": "API Error Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(http_requests_total{status=~\"5..\"}[5m])", "legendFormat": "5xx errors"}],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "title": "Response Latency (p95)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))", "legendFormat": "p95"}],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    },
+    {
+      "title": "Active Users",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "sum(active_sessions)", "legendFormat": "Users"}],
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 16}
+    },
+    {
+      "title": "MongoDB Connections",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "mongodb_connections", "legendFormat": "Connections"}],
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 16}
+    },
+    {
+      "title": "Redis Cache Hit Rate",
+      "type": "gauge",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(redis_cache_hits_total[5m]) / (rate(redis_cache_hits_total[5m]) + rate(redis_cache_misses_total[5m])) * 100", "legendFormat": "Hit %"}],
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 16}
+    },
+    {
+      "title": "Azure Resource Health",
+      "type": "table",
+      "datasource": "Azure Monitor",
+      "targets": [{"expr": "AzureMetrics"}],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20}
+    },
+    {
+      "title": "Terraform Deployments",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "terraform_deployments_total", "legendFormat": "Total"}],
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 28}
+    },
+    {
+      "title": "Deployment Success Rate",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "rate(terraform_deployments_success[30d]) / rate(terraform_deployments_total[30d]) * 100", "legendFormat": "Success %"}],
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 28}
+    }
+  ]
+}

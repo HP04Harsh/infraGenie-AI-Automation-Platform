@@ -1,0 +1,5 @@
+name                = "srv2933"
+resource_group_name = "rg-e2e-2933"
+location            = "eastus"
+vm_size             = "Standard_B2s"
+admin_username      = "azureuser"

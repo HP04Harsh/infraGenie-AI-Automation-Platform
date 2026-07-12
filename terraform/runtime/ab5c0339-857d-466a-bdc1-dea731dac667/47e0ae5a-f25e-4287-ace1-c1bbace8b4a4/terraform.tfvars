@@ -1,0 +1,6 @@
+name = "web01"
+resource_group_name = "rg-infragenie-test"
+location = "centralindia"
+vm_size = "Standard_B2s"
+admin_username = "azureuser"
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAABAAABAQCsampleKeyOnlyForDemo123456789ABCDEFGHIJKLMNOP azureuser@demo"

@@ -1,0 +1,124 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: infragenie-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: infragenie-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: infragenie-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - INFRACOST_API_KEY=ics_v1_FrcFm327PjSDbwe3aIWk3q_UyNHWquCLPwPJgTWjx70c1rakA2e6tPBTetEKk9ehN8CnsLf4
+      - INFRACOST_CLI_AUTH_TOKEN=ics_v1_GQ0ZRD8xhGKAoCuRBmMKpg_OeyNQxx4OufrnEE8tGqVEypoLEmtRoTD1SNKcZZW77NBAL4kI
+    volumes:
+      - ./backend:/app
+      - ./terraform:/app/terraform
+      - ./scripts:/app/scripts
+      - infracost_config:/root/.config/infracost
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: infragenie-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    env_file:
+      - frontend/.env
+    volumes:
+      - ./frontend/src:/app/src
+    restart: unless-stopped
+  mongodb-exporter:
+    image: bitnami/mongodb-exporter:latest
+    container_name: infragenie-mongo-exporter
+    ports:
+      - "9216:9216"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+    command:
+      - '--mongodb.uri=mongodb://mongodb:27017'
+      - '--collect-all'
+      - '--compatible-mode'
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: infragenie-redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    command:
+      - '--redis.addr=redis://redis:6379'
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: infragenie-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: infragenie-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./monitoring/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=infragenie
+      - GF_INSTALL_PLUGINS=grafana-azure-monitor-datasource
+
+volumes:
+  mongo_data:
+  prometheus_data:
+  grafana_data:
+  infracost_config:

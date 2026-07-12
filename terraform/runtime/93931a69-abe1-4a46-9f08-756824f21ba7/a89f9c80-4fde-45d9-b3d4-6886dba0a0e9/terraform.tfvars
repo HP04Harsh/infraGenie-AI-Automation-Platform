@@ -1,0 +1,7 @@
+name = "vm-prod-app-01"
+location = "Central India"
+vm_size = "Standard_B2s"
+admin_username = "azureuser"
+os_image = "Ubuntu 22.04 LTS"
+resource_group_name = "rg-prod-app"
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... (fake key)"

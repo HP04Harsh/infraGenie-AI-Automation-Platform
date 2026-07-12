@@ -1,0 +1,5 @@
+name="db-reporting"
+server_name="sql-prod-srv-01"
+resource_group_name="rg-prod-app"
+sku_name="S0"
+max_size_gb=50

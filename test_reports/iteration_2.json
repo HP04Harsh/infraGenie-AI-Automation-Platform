@@ -1,0 +1,40 @@
+{
+  "summary": "Full backend + frontend testing of InfraGenie auth + onboarding + dashboard flow. 14/14 backend pytest tests PASS. Frontend flow is mostly working (login, register, redirects, onboarding steps 1-4, dashboard, sidebar/topbar names, KPI cards, admin login). ONE CRITICAL FUNCTIONAL BUG: Onboarding Step 5 (Done screen with 4 stat cards + Go to Dashboard button) never renders — user is auto-redirected from /onboarding straight to /dashboard the moment refreshUser() completes after extraction. The Go-to-Dashboard button, 'You\\'re all set, QA!' heading, and 4 stat cards are never visible to the user.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Onboarding (Step 5 Done)",
+        "issue": "Step 5 'Done' view never displays. After /api/onboarding/submit returns, the code calls refreshUser() which updates user.onboarding_complete=true. The useEffect at Onboarding.jsx line 42-45 then unconditionally navigates to /dashboard, skipping the StepDone component (heading 'You\\'re all set, QA!', 4 stat cards Resources/VMs/Resource Groups/Security Score, and the onboarding-go-dashboard button). User never sees the success screen.",
+        "selector": "[data-testid='onboarding-go-dashboard']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix Onboarding Step 5 skipped bug in /app/frontend/src/pages/Onboarding.jsx. Either (a) remove `await refreshUser()` from finalizeExtraction and call it inside the 'Go to Dashboard' click handler (StepDone), or (b) guard the redirect useEffect so it does not navigate when the user is mid-flow on /onboarding — e.g. only redirect to /dashboard if user.onboarding_complete && step !== 5, or use a local `onboardedAtMount` ref that is set only when the page first loads."
+  ],
+  "critical_code_review_comments": [
+    "Onboarding.jsx is 604 lines — exceeds 700-line guideline soon; split StepCompany/StepAzure/StepAi/StepExtract/StepDone into separate files under /pages/onboarding/.",
+    "server.py POST /api/auth/logout does not require authentication — anyone hitting it clears the cookie (low impact since it just clears your own cookie, but technically it should validate the session).",
+    "azure_services.py: the 'compute' phase emits start/ok/error but spec calls the UI phase 'cost' covering 5 bars (auth, resources, cost, security, ai). The compute phase emits to the cb but the frontend ignores 'compute' (no matching extraction phase key on UI). The vms_total still surfaces correctly, but the terminal log shows 'compute' lines that aren't tied to a progress bar — cosmetic.",
+    "/api/auth/login has no brute-force lockout (spec from playbook_testing_instructions asked to verify lockout after 5 fails). Not implemented.",
+    "JWT_SECRET is read at import time but ADMIN_EMAIL/ADMIN_PASSWORD use os.environ.get with defaults — inconsistent fail-fast behavior across env vars."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_backend.py"
+  ],
+  "success_rate": { "backend": "100%", "frontend": "92%" },
+  "test_credentials": "Admin: admin@chatops.com / admin123 (seeded). Created QA users via /api/auth/register with qa+<rand>@example.com / Test1234!. EmailStr rejects .test TLD so use real-looking domains for tests.",
+  "seed_data_creation": "Created multiple test users (qa+<uuid>@example.com) during e2e flow — they remain in MongoDB users + tenant_metrics + secrets collections with fake Azure creds. Safe to leave or purge.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend is solid (14/14 pytest pass). Critical remaining frontend bug: Step 5 of onboarding is unreachable due to redirect race after refreshUser(). Once main agent fixes it (most likely by moving refreshUser into the StepDone 'Go to Dashboard' click handler or guarding the redirect useEffect), retest by walking through register → 5 steps and asserting the heading 'You\\'re all set' and [data-testid=onboarding-go-dashboard] are visible AFTER extraction completes (~10-15s with fake Azure creds). Note: EmailStr in pydantic rejects '.test' TLD — use '@example.com' in tests. Login page has data-testid='login-page' and split-pane layout was not visually verified by screenshot but all login testids exist and login flow works end-to-end. Cookie-based auth (ig_token, httpOnly, Secure, SameSite=None) confirmed working across cross-origin.",
+  "rca of the issue": "BUG: Onboarding Step 5 'Done' screen never renders.\nReproduction:\n1. Register a new user via /login → toggle → submit signup. Redirects to /onboarding.\n2. Fill Step 1 Company → Continue.\n3. Fill Step 2 Azure Tenant (4 fields, any fake UUIDs) → Continue.\n4. Fill Step 3 AI Config endpoint + key → Continue.\n5. On Step 4 click [data-testid=onboarding-extract-button]. After ~10-15s the backend returns 200 with metrics.phases populated (auth/resources/cost/security=error, ai=ok with fake creds).\n6. Expected: setStep(5) triggers; user sees green check, 'You\\'re all set, <name>!' heading, 4 stat cards (Resources=0, VMs=0, Resource Groups=0, Security Score=0) and a Go to Dashboard button.\n7. Actual: User is instantly redirected to /dashboard. Step 5 markup never paints.\n\nRoot cause: /app/frontend/src/pages/Onboarding.jsx lines 42-45\n```\nuseEffect(() => {\n  if (user === false) nav(\"/login\", { replace: true });\n  if (user && user.onboarding_complete) nav(\"/dashboard\", { replace: true });\n}, [user, nav]);\n```\ncombined with line 108 inside finalizeExtraction:\n```\nawait refreshUser();\n```\nThe refreshUser() call updates AuthContext.user.onboarding_complete = true (the backend marks user.onboarding_complete=true inside /api/onboarding/submit). The above useEffect then fires with the new user object and unconditionally navigates to /dashboard, BEFORE the planned `setTimeout(() => setStep(5), 600)` on line 118 even runs (and even if it did, the navigate would still take precedence).\n\nMitigation (recommended): Remove `await refreshUser()` from finalizeExtraction (line 108). Instead call refreshUser() inside the StepDone 'Go to Dashboard' onClick handler right before nav('/dashboard'). The user can finish reading the success screen, then refresh + navigate when they choose. Alternative: keep refreshUser but change the redirect useEffect to ignore the moment of just-completed onboarding, e.g.:\n```\nconst justFinished = useRef(false);\n// inside finalizeExtraction success: justFinished.current = true; setStep(5);\nuseEffect(() => {\n  if (user && user.onboarding_complete && !justFinished.current) nav('/dashboard', { replace: true });\n}, [user]);\n```"
+}

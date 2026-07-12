@@ -1,0 +1,5 @@
+name="fn-prod-worker"
+resource_group_name="rg-prod-app"
+location="centralindia"
+storage_account_name="stprodapp001"
+runtime_stack="python"

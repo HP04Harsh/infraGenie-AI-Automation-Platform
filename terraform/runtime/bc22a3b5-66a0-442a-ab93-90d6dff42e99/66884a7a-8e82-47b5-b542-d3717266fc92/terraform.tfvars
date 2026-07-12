@@ -1,0 +1,8 @@
+name                  = "Server1"
+resource_group_name   = "rg-test-e2e"
+location              = "westus2"
+vm_size               = "Standard_D2s_v3"
+admin_username        = "harsh"
+admin_password        = "Harsh@321456"
+authentication_method = "password"
+os_image              = "Ubuntu 22.04 LTS"

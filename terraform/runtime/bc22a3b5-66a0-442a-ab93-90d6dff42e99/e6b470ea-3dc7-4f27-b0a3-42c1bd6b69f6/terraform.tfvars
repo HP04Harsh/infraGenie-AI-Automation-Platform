@@ -1,0 +1,6 @@
+name                = "server01"
+resource_group_name = "rg-server01"
+location            = "westus2"
+vm_size             = "Standard_D2s_v3"
+admin_username      = "Harsh"
+admin_password      = "Harsh@321456"

@@ -1,0 +1,5 @@
+name="stprodapp001"
+resource_group_name="rg-prod-app"
+location="centralindia"
+account_tier="Standard"
+replication_type="LRS"

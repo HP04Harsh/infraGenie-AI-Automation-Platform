@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'InfraGenie Dashboards'
+    orgId: 1
+    folder: 'InfraGenie'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

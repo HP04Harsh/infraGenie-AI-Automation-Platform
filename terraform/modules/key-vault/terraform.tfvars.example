@@ -1,0 +1,4 @@
+name="kv-prod-secrets-01"
+resource_group_name="rg-prod-app"
+location="centralindia"
+sku_name="standard"

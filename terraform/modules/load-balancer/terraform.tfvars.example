@@ -1,0 +1,4 @@
+name="lb-prod"
+resource_group_name="rg-prod-app"
+location="centralindia"
+sku="Standard"

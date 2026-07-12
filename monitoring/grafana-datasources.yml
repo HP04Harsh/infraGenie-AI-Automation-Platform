@@ -1,0 +1,24 @@
+apiVersion: 1
+
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  - name: Azure Monitor
+    type: grafana-azure-monitor-datasource
+    access: proxy
+    jsonData:
+      cloudName: azuremonitor
+      subscriptionId: $AZURE_SUBSCRIPTION_ID
+      tenantId: $AZURE_TENANT_ID
+      clientId: $AZURE_CLIENT_ID
+    secureJsonData:
+      clientSecret: $AZURE_CLIENT_SECRET

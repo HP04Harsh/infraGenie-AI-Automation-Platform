@@ -1,0 +1,4 @@
+name="pip-prod-01"
+resource_group_name="rg-prod-app"
+location="centralindia"
+allocation_method="Static"

@@ -1,0 +1,6 @@
+name                = "vm6-582"
+resource_group_name = "rg-vm6-91210"
+location            = "westus2"
+vm_size             = "Standard_D2s_v3"
+admin_username      = "azureuser"
+ssh_public_key      = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDA2P9DwlzLeemtFqbpjqmZXiUYo8PUMbxENp4fbMSjbPEh8S5KTbyOSxfwb20Leg99oLDJ4aBuAfGkzj1x2AwV59ss3IBq4V9cSQoRvBhPHxle9P/V6QFaJ1Zc1sKvT7BK7dX/cDCTcyDc2VqOQvJB4h1fzYjwN221DvoumzBnnV/gjHvNCEtRgpPlMs/c/iATD7ux/3oex4V3CftY4v6Ur83r9Dy3eMRjbKwOmQiWyAzX2XdNcHraMQV+kopr5oODHol3nANXalM6xDWNbCHc7Q3zF8kJatUvvug0/1lQcSKNZtoOX7drKNHg9nvGfccFKg+2Pl/S4QGLzJjgjUFB harsh@Harsh_Laptop"

@@ -1,0 +1,6 @@
+name                = "vm-default"
+resource_group_name = "rg-default"
+location            = "eastus"
+vm_size             = "Standard_B2s"
+admin_username      = "azureuser"
+os_image            = "Ubuntu 22.04 LTS"

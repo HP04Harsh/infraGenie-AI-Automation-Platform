@@ -1,0 +1,5 @@
+name="app-prod-api"
+resource_group_name="rg-prod-app"
+location="centralindia"
+sku_name="B1"
+runtime_stack="python"

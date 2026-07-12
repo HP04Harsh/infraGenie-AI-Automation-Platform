@@ -1,0 +1,5 @@
+name="sql-prod-srv-01"
+resource_group_name="rg-prod-app"
+location="centralindia"
+administrator_login="sqladmin"
+administrator_password="REPLACE_ME"

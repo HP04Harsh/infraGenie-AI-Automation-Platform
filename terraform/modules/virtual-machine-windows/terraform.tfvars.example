@@ -1,0 +1,7 @@
+name="vm-prod-win-01"
+resource_group_name="rg-prod-app"
+location="centralindia"
+vm_size="Standard_D2s_v5"
+admin_username="azureadmin"
+admin_password="REPLACE_ME"
+subnet_id="..."

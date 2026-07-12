@@ -1,0 +1,7 @@
+name="vm-prod-app-01"
+resource_group_name="rg-prod-app"
+location="centralindia"
+vm_size="Standard_B2s"
+admin_username="azureuser"
+ssh_public_key="ssh-rsa AAAA..."
+subnet_id="/subscriptions/.../subnets/default"

@@ -1,0 +1,6 @@
+name                = "server01"
+resource_group_name = "rg-server01"
+location            = "eastus"
+vm_size             = "Standard_B2s"
+admin_username      = "Harsh"
+admin_password      = "Harsh@321456"

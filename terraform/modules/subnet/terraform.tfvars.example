@@ -1,0 +1,4 @@
+name="default"
+resource_group_name="rg-prod-app"
+virtual_network_name="vnet-prod"
+address_prefix="10.0.1.0/24"
