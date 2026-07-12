@@ -248,6 +248,14 @@ InfraGenie runs entirely via Docker Compose. For production:
 4. Set up MongoDB backups
 5. Pin Docker image versions in `docker-compose.yml`
 
+## Screenshots
+
+> Coming soon
+
+---
+
+**Author**: Harsh Pardhi
+
 ## License
 
 MIT
