@@ -85,13 +85,11 @@ async def install_node_exporter(
 ) -> Dict[str, Any]:
     """Install Node Exporter on a Linux VM via Azure Run Command."""
     try:
+        from azure.mgmt.compute.models import RunCommandInput
         client = ComputeManagementClient(cred, subscription_id)
         poller = client.virtual_machines.begin_run_command(
             resource_group, vm_name,
-            {
-                "command_id": "RunShellScript",
-                "script": [NODE_EXPORTER_INSTALL_SCRIPT],
-            },
+            RunCommandInput(command_id="RunShellScript", script=[NODE_EXPORTER_INSTALL_SCRIPT]),
         )
         result = poller.result()
         output = "".join(result.value[0].message.splitlines()[:30]) if result.value else ""
@@ -168,7 +166,7 @@ async def query_vm_metrics(
         client = MonitorManagementClient(cred, subscription_id)
         end = datetime.now(timezone.utc)
         start = end - timedelta(minutes=15)
-        timespan = f"{start.isoformat()}/{end.isoformat()}"
+        timespan = f"{start.strftime('%Y-%m-%dT%H:%M:%SZ')}/{end.strftime('%Y-%m-%dT%H:%M:%SZ')}"
 
         resource_id = (
             f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}"
@@ -315,11 +313,12 @@ async def create_alert_ticket(
     except Exception as e:
         logger.warning("ServiceNow sync failed for alert ticket: %s", e)
 
-    # Send email alert
+    # Send email alert with Apply Fix button
     try:
         user = await db.users.find_one({"id": user_id}, {"_id": 0, "email": 1, "name": 1})
         if user and user.get("email"):
-            email_body = build_alert_email_body(vm_name, issue_type, details, ticket_number)
+            apply_link = f"http://localhost:3000/monitoring?ticket={ticket_number}"
+            email_body = build_alert_email_body(vm_name, issue_type, details, ticket_number, apply_link=apply_link)
             asyncio.create_task(send_email(
                 db, user_id, user["email"],
                 f"[InfraGenie Alert] {issue_type.upper()} on {vm_name} - {ticket_number}",
@@ -516,6 +515,34 @@ def get_fix_script(issue_type: str, os_type: str) -> Tuple[str, str]:
     return script, ext
 
 
+# ---------- AI Fix Script Generation ----------
+async def _generate_fix_script_ai(
+    db, user_id: str, issue_type: str, vm_name: str, os_type: str = "linux",
+) -> Optional[str]:
+    """Generate a fix script via Azure OpenAI. Returns script text or None."""
+    try:
+        user = await db.users.find_one({"id": user_id}, {"_id": 0})
+        if not user:
+            return None
+        from tenant_ai_service import tenant_chat
+        prompt = (
+            f"You are a Linux sysadmin. The VM '{vm_name}' has a {issue_type} issue. "
+            f"Generate a bash script that diagnoses and fixes the issue. "
+            f"Output ONLY the script code between ```bash and ``` markers. "
+            f"The script must be safe, idempotent, and include diagnostic output."
+        )
+        res = await tenant_chat(db, user, [{"role": "user", "content": prompt}], max_tool_iterations=0)
+        reply = res.get("reply", "")
+        import re
+        m = re.search(r"```(?:bash)?\s*([\s\S]+?)```", reply)
+        if m:
+            return m.group(1).strip()
+        return reply.strip()
+    except Exception as e:
+        logger.warning("AI fix script generation failed: %s", e)
+        return None
+
+
 # ---------- Run Fix Script ----------
 async def run_fix_script_on_vm(
     db, user_id: str, ticket_number: str, subscription_id: str,
@@ -527,7 +554,13 @@ async def run_fix_script_on_vm(
         return {"success": False, "error": "Ticket not found"}
 
     issue_type = ticket.get("issue_type", "health")
-    script_content, ext = get_fix_script(issue_type, os_type)
+
+    # Try AI-generated fix script first, fall back to hardcoded
+    script_content = await _generate_fix_script_ai(db, user_id, issue_type, vm_name, os_type)
+    if not script_content:
+        script_content, ext = get_fix_script(issue_type, os_type)
+    else:
+        ext = ".sh" if os_type == "linux" else ".ps1"
     script_name = f"fix_{issue_type}_{vm_name}{ext}"
 
     # Execute via Azure Run Command
@@ -536,11 +569,12 @@ async def run_fix_script_on_vm(
         return {"success": False, "error": "Azure credentials not configured"}
 
     try:
+        from azure.mgmt.compute.models import RunCommandInput
         compute = ComputeManagementClient(sp["cred"], subscription_id)
         command_id = "RunShellScript" if os_type == "linux" else "RunPowerShellScript"
         poller = compute.virtual_machines.begin_run_command(
             resource_group, vm_name,
-            {"command_id": command_id, "script": [script_content]},
+            RunCommandInput(command_id=command_id, script=[script_content]),
         )
         result = poller.result(timeout=300)
         output = "".join(r.message for r in (result.value or []))
@@ -645,14 +679,14 @@ async def start_monitoring_loop(db, user_id: str):
             tickets = await db.tickets.find({
                 "user_id": user_id,
                 "status": {"$in": ["completed", "open", "resolved"]},
-                "module_key": {"$in": ["virtual-machine", "virtual-machine-windows", "linux-vm-nginx"]},
-            }, {"_id": 0, "resource_name": 1, "region": 1, "deployment_name": 1}).to_list(length=50)
+                "module_key": {"$in": ["virtual-machine", "virtual-machine-windows", "virtual-machine-linux", "linux-vm-nginx"]},
+            }, {"_id": 0, "resource_name": 1, "resource_group": 1, "region": 1}).to_list(length=50)
 
             for tkt in tickets:
-                vm_name = tkt.get("deployment_name") or tkt.get("resource_name", "")
+                vm_name = tkt.get("resource_name", "")
                 if not vm_name:
                     continue
-                rg = f"rg-{vm_name}"
+                rg = tkt.get("resource_group", "") or f"rg-{vm_name}"
                 await check_and_alert(db, user_id, vm_name, rg, sub_id, cred)
 
         except Exception as e:

@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel
 
 from tenant_ai_service import (
@@ -55,6 +55,14 @@ class ITSMChatOut(BaseModel):
 class RemediateIn(BaseModel):
     policy_assignment_id: str
     note: str = ""
+
+class AlertWebhookIn(BaseModel):
+    message: str = ""
+    data: Dict[str, Any] = {}
+
+class ApplyFixIn(BaseModel):
+    ticket_number: str
+    os_type: str = "linux"
 
 
 def create_agent_router(db, emit_event, get_current_user):
@@ -939,22 +947,14 @@ Return STRICT JSON:
         }
 
     # -------- Monitoring / Alerting --------
-    class AlertWebhookIn(BaseModel):
-        message: str = ""
-        data: Dict[str, Any] = {}
-
-    class ApplyFixIn(BaseModel):
-        ticket_number: str
-        os_type: str = "linux"
-
     @router.post("/monitoring/webhook")
-    async def monitoring_webhook(payload: AlertWebhookIn, user: dict = Depends(get_current_user)):
+    async def monitoring_webhook(payload: AlertWebhookIn = Body(), user: dict = Depends(get_current_user)):
         from monitoring_service import handle_alert_webhook
         result = await handle_alert_webhook(db, user["id"], payload.model_dump())
         return result
 
     @router.post("/monitoring/apply-fix")
-    async def monitoring_apply_fix(payload: ApplyFixIn, user: dict = Depends(get_current_user)):
+    async def monitoring_apply_fix(payload: ApplyFixIn = Body(), user: dict = Depends(get_current_user)):
         from monitoring_service import run_fix_script_on_vm
         ticket = await db.tickets.find_one({"ticket_number": payload.ticket_number, "user_id": user["id"]}, {"_id": 0})
         if not ticket:

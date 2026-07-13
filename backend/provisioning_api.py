@@ -519,7 +519,7 @@ def create_router(db, emit_event, get_current_user) -> APIRouter:
                     "blob_artifacts": artifacts,
                 }
                 # Post-deploy: install Node Exporter + register with Prometheus for VM modules
-                if code == 0 and module_key in ("virtual-machine", "virtual-machine-windows", "linux-vm-nginx"):
+                if code == 0 and module_key in ("virtual-machine", "virtual-machine-windows", "virtual-machine-linux", "linux-vm-nginx"):
                     try:
                         from monitoring_service import install_node_exporter, register_prometheus_target
                         pub_ip = outputs.get("public_ip", "")
@@ -666,6 +666,7 @@ def create_router(db, emit_event, get_current_user) -> APIRouter:
             "resource_name": vars_map.get("name"),
             "resource_type": f"azurerm_{module_key.replace('-','_')}" if module_key else "unknown",
             "region": vars_map.get("location"),
+            "resource_group": vars_map.get("resource_group_name", ""),
             "operation": "create",
             "approver": user.get("name", "User"),
             "estimated_cost": (plan.get("cost") or {}).get("monthly_total"),
