@@ -1231,6 +1231,19 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
+@app.on_event("startup")
+async def startup():
+    """Start background monitoring loop for guest user and any admin users."""
+    try:
+        guest = await db.users.find_one({"email": "guest@infragenie.io"}, {"_id": 0, "id": 1})
+        if guest:
+            from monitoring_service import start_monitoring_loop
+            asyncio.create_task(start_monitoring_loop(db, guest["id"]))
+            logger.info("Monitoring loop started for guest user")
+    except Exception as e:
+        logger.warning("Failed to start monitoring loop: %s", e)
+
+
 @app.on_event("shutdown")
 async def shutdown():
     client.close()

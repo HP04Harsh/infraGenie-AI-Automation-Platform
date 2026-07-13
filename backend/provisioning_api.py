@@ -518,6 +518,34 @@ def create_router(db, emit_event, get_current_user) -> APIRouter:
                     "engine": "terraform_cli",
                     "blob_artifacts": artifacts,
                 }
+                # Post-deploy: install Node Exporter + register with Prometheus for VM modules
+                if code == 0 and module_key in ("virtual-machine", "virtual-machine-windows", "linux-vm-nginx"):
+                    try:
+                        from monitoring_service import install_node_exporter, register_prometheus_target
+                        pub_ip = outputs.get("public_ip", "")
+                        vm_name = outputs.get("vm_name") or outputs.get("name") or vars_map.get("name", "")
+                        rg = vars_map.get("resource_group_name", f"rg-{vm_name}")
+                        sp_cred = {
+                            "tenant_id": sp.get("tenant_id"),
+                            "client_id": sp.get("client_id"),
+                            "client_secret": sp.get("client_secret"),
+                        }
+                        if pub_ip and module_key != "virtual-machine-windows":
+                            cred_obj = None
+                            try:
+                                from azure.identity import ClientSecretCredential
+                                cred_obj = ClientSecretCredential(
+                                    tenant_id=sp["tenant_id"], client_id=sp["client_id"], client_secret=sp["client_secret"],
+                                )
+                            except Exception:
+                                pass
+                            if cred_obj:
+                                ne_result = await install_node_exporter(sp["subscription_id"], rg, vm_name, cred_obj)
+                                if ne_result.get("success"):
+                                    await register_prometheus_target(vm_name, pub_ip)
+                                logger.info("Node Exporter setup for %s: %s", vm_name, ne_result.get("success", False))
+                    except Exception as e:
+                        logger.warning("Post-deploy monitoring setup failed: %s", e)
             except Exception as e:
                 logger.exception("real terraform apply failed")
                 apply_result = {

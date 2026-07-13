@@ -378,6 +378,72 @@ function TicketDetail() {
               </button>
             </div>
           )}
+
+          {/* Monitoring alert: VM info + metrics + Apply Fix */}
+          {ticket.source === "monitoring" && (
+            <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Stat label="VM Name" value={ticket.vm_name || "—"} />
+                <Stat label="Issue Type" value={(ticket.issue_type || "").toUpperCase()} />
+                <Stat label="ServiceNow" value={ticket.servicenow_number || "—"} />
+                <Stat label="Priority" value={ticket.priority || "—"} />
+              </div>
+              {ticket.metrics && Object.keys(ticket.metrics).length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700 mb-1">Metrics Snapshot</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[12px]">
+                    {Object.entries(ticket.metrics).filter(([k]) => !["timestamp", "error"].includes(k)).map(([k, v]) => (
+                      <div key={k}>
+                        <span className="font-mono text-amber-600">{k}:</span>{" "}
+                        <span className="font-semibold text-amber-900">{typeof v === "number" ? v.toFixed(1) : String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!ticket.fix_applied && ticket.status === "open" && (
+                <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-center justify-between">
+                  <div className="text-[12.5px] text-rose-700">
+                    <strong>Auto-fix available.</strong> An AI-generated script will attempt to resolve this issue.
+                    <br />
+                    <span className="text-[11px] text-rose-500">This is a temporary solution — verify the VM manually after the fix.</span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm(`Apply AI-generated fix for ${ticket.vm_name}? This will run a script on the VM.`)) return;
+                      try {
+                        const r = await axios.post(`${API}/monitoring/apply-fix`, { ticket_number: ticket.ticket_number, os_type: "linux" }, { withCredentials: true });
+                        if (r.data.success) {
+                          toast.success("Fix applied successfully");
+                        } else {
+                          toast.error("Fix failed", { description: r.data.output || r.data.error });
+                        }
+                        refresh();
+                      } catch (e) {
+                        toast.error("Failed to apply fix", { description: e.response?.data?.detail || e.message });
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[12.5px] font-semibold"
+                  >
+                    <Server className="h-4 w-4" /> Apply Auto-Fix
+                  </button>
+                </div>
+              )}
+              {ticket.fix_applied && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-[12.5px] text-emerald-700">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <strong>Fix Applied</strong>
+                  </div>
+                  {ticket.fix_result && (
+                    <pre className="mt-2 text-[11px] font-mono text-emerald-800 bg-emerald-100/50 rounded p-2 max-h-32 overflow-y-auto">
+                      {ticket.fix_result.output || ticket.fix_result.status || JSON.stringify(ticket.fix_result)}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

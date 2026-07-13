@@ -938,6 +938,70 @@ Return STRICT JSON:
             "monitor_context": monitor_context[:500] if monitor_context else None,
         }
 
+    # -------- Monitoring / Alerting --------
+    class AlertWebhookIn(BaseModel):
+        message: str = ""
+        data: Dict[str, Any] = {}
+
+    class ApplyFixIn(BaseModel):
+        ticket_number: str
+        os_type: str = "linux"
+
+    @router.post("/monitoring/webhook")
+    async def monitoring_webhook(payload: AlertWebhookIn, user: dict = Depends(get_current_user)):
+        from monitoring_service import handle_alert_webhook
+        result = await handle_alert_webhook(db, user["id"], payload.model_dump())
+        return result
+
+    @router.post("/monitoring/apply-fix")
+    async def monitoring_apply_fix(payload: ApplyFixIn, user: dict = Depends(get_current_user)):
+        from monitoring_service import run_fix_script_on_vm
+        ticket = await db.tickets.find_one({"ticket_number": payload.ticket_number, "user_id": user["id"]}, {"_id": 0})
+        if not ticket:
+            raise HTTPException(404, "Ticket not found")
+        result = await run_fix_script_on_vm(
+            db, user["id"], payload.ticket_number,
+            ticket.get("subscription_id", ""),
+            ticket.get("resource_group", ""),
+            ticket.get("vm_name", ""),
+            os_type=payload.os_type,
+        )
+        return result
+
+    @router.get("/monitoring/alerts")
+    async def monitoring_alerts(user: dict = Depends(get_current_user)):
+        cursor = db.tickets.find(
+            {"user_id": user["id"], "source": "monitoring"},
+            {"_id": 0},
+        ).sort("created_at", -1).limit(50)
+        items = []
+        async for t in cursor:
+            items.append({
+                "ticket_number": t.get("ticket_number", ""),
+                "title": t.get("title", ""),
+                "vm_name": t.get("vm_name", ""),
+                "issue_type": t.get("issue_type", ""),
+                "status": t.get("status", ""),
+                "priority": t.get("priority", ""),
+                "fix_applied": t.get("fix_applied", False),
+                "created_at": t.get("created_at", ""),
+                "servicenow_number": t.get("servicenow_number", ""),
+                "metrics": t.get("metrics", {}),
+            })
+        return {"items": items, "total": len(items)}
+
+    @router.post("/monitoring/alerts/{ticket_number}/dismiss")
+    async def dismiss_alert(ticket_number: str, user: dict = Depends(get_current_user)):
+        await db.tickets.update_one(
+            {"ticket_number": ticket_number, "user_id": user["id"]},
+            {"$set": {"status": "dismissed", "updated_at": datetime.now(timezone.utc)}},
+        )
+        from monitoring_service import ACTIVE_ALERTS
+        for key in list(ACTIVE_ALERTS.keys()):
+            if ACTIVE_ALERTS[key] == ticket_number:
+                ACTIVE_ALERTS.pop(key, None)
+        return {"dismissed": True}
+
     return router
 
 def _render_pdf(title: str, user_email: str, body_md: str, tool_traces: list) -> bytes:

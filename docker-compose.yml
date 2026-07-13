@@ -48,6 +48,7 @@ services:
       - ./terraform:/app/terraform
       - ./scripts:/app/scripts
       - infracost_config:/root/.config/infracost
+      - prometheus_targets:/prometheus-targets
     restart: unless-stopped
 
   frontend:
@@ -96,6 +97,7 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
+      - prometheus_targets:/prometheus-targets
     restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -122,3 +124,4 @@ volumes:
   prometheus_data:
   grafana_data:
   infracost_config:
+  prometheus_targets:
